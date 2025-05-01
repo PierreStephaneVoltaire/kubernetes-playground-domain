@@ -1,23 +1,21 @@
-locals {
-  vault_domain = "vault.${var.domain_name}"
+data "aws_lbs" "istio" {
+  tags = {
+    "service.k8s.aws/stack" = "istio-system/istio-ingressgateway"
+  }
 }
-# data "aws_lbs" "vault" {
-#   tags = {
-#     "ingress.k8s.aws/stack" = "vault/vault"
-#   }
-# }
-#
-# data "aws_lb" "vault" {
-#   arn = one(data.aws_lbs.vault.arns)
-# }
-# resource "aws_route53_record" "vaultcd_alb" {
-#   zone_id = data.aws_route53_zone.main.zone_id
-#   name    = local.vault_domain
-#   type    = "A"
-#   alias {
-#     name                   = data.aws_lb.vault.dns_name
-#     zone_id                = data.aws_lb.vault.zone_id
-#     evaluate_target_health = true
-#   }
-# }
+
+data "aws_lb" "istio" {
+  arn = one(data.aws_lbs.istio.arns)
+}
+resource "aws_route53_record" "vault" {
+  for_each = toset(["dev","uat","prod"])
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = "vault-${each.value}.${var.domain_name}"
+  type    = "A"
+  alias {
+    name                   = data.aws_lb.istio.dns_name
+    zone_id                = data.aws_lb.istio.zone_id
+    evaluate_target_health = true
+  }
+}
 

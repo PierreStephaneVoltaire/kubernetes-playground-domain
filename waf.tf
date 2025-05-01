@@ -1,3 +1,4 @@
+
 resource "aws_wafv2_web_acl" "default_waf" {
   name        = "default-waf"
   description = "Basic AWS WAF with enhanced managed rules"
@@ -78,10 +79,20 @@ resource "aws_wafv2_web_acl" "default_waf" {
     sampled_requests_enabled   = false
   }
 }
-data "aws_lbs" "all" {}
+data "aws_lbs" "all" {
+  
+}
+data "aws_lb" "details" {
+  for_each = toset(data.aws_lbs.all.arns)
+  arn      = each.key
+}
 resource "aws_wafv2_web_acl_association" "alb_assoc" {
-  for_each     = toset(data.aws_lbs.all.arns)
-  resource_arn = each.value
+  for_each = {
+    for arn, lb in data.aws_lb.details :
+    arn => lb
+    if lb.load_balancer_type != "network"
+  }
+  resource_arn = each.value.arn
   web_acl_arn  = aws_wafv2_web_acl.default_waf.arn
 }
 #
